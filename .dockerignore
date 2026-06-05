@@ -1,0 +1,9 @@
+node_modules/
+src/client/node_modules/
+src/client/dist/
+bun.lockb
+src/client/bun.lockb
+.git/
+.env
+.env.local
+*.log

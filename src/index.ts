@@ -1,0 +1,198 @@
+import { staticPlugin } from '@elysiajs/static';
+import { Elysia, t } from 'elysia';
+import { authPlugin } from './auth';
+import { pool } from './db';
+import { getEmbedding } from './gemini';
+
+const port = process.env.PORT || 3000;
+
+const app = new Elysia()
+  // Serve static files built by Vite/React
+  .use(staticPlugin({
+    assets: 'src/client/dist',
+    prefix: '/'
+  }))
+  // Helper for auth sign
+  .use(authPlugin)
+  
+  // Public Login Route
+  .post('/api/auth/login', async ({ body, jwt, set }) => {
+    const { username, password } = body;
+    
+    const expectedUser = process.env.APP_USERNAME;
+    const expectedPass = process.env.APP_PASSWORD;
+    
+    if (!expectedUser || !expectedPass) {
+      set.status = 500;
+      return { error: 'Configuração de autenticação ausente no servidor' };
+    }
+    
+    if (username === expectedUser && password === expectedPass) {
+      const token = await jwt.sign({ username });
+      return { token };
+    }
+    
+    set.status = 401;
+    return { error: 'Credenciais inválidas' };
+  }, {
+    body: t.Object({
+      username: t.String(),
+      password: t.String()
+    })
+  })
+  
+  // Protected API Routes Group
+  .group('/api', (app) => 
+    app
+      .onBeforeHandle(({ user, set }) => {
+        if (!user) {
+          set.status = 401;
+          return { error: 'Não autorizado' };
+        }
+      })
+      
+      // List Documents (Metadata only)
+      .get('/documents', async () => {
+        const [rows] = await pool.query(
+          'SELECT id, titulo, created_at, updated_at FROM vector_documentos ORDER BY created_at DESC'
+        );
+        return rows;
+      })
+      
+      // Get Single Document (Includes content)
+      .get('/documents/:id', async ({ params, set }) => {
+        const id = parseInt(params.id);
+        const [rows]: any = await pool.query(
+          'SELECT id, titulo, conteudo, created_at, updated_at FROM vector_documentos WHERE id = ?',
+          [id]
+        );
+        if (rows.length === 0) {
+          set.status = 404;
+          return { error: 'Documento não encontrado' };
+        }
+        return rows[0];
+      })
+      
+      // Create Document (Generates vector embedding)
+      .post('/documents', async ({ body, set }) => {
+        const { titulo, conteudo } = body;
+        
+        try {
+          const embedding = await getEmbedding(conteudo);
+          const embeddingString = `[${embedding.join(',')}]`;
+          
+          const [result]: any = await pool.query(
+            'INSERT INTO vector_documentos (titulo, conteudo, embedding) VALUES (?, ?, string_to_vector(?))',
+            [titulo, conteudo, embeddingString]
+          );
+          
+          return { id: result.insertId, titulo, success: true };
+        } catch (err: any) {
+          set.status = 500;
+          return { error: `Erro ao gerar embedding ou salvar banco: ${err.message}` };
+        }
+      }, {
+        body: t.Object({
+          titulo: t.String(),
+          conteudo: t.String()
+        })
+      })
+      
+      // Update Document (Re-generates vector embedding)
+      .put('/documents/:id', async ({ params, body, set }) => {
+        const id = parseInt(params.id);
+        const { titulo, conteudo } = body;
+        
+        try {
+          // Check if document exists
+          const [checkRows]: any = await pool.query('SELECT id, conteudo FROM vector_documentos WHERE id = ?', [id]);
+          if (checkRows.length === 0) {
+            set.status = 404;
+            return { error: 'Documento não encontrado' };
+          }
+          
+          let embeddingString: string;
+          
+          // Only re-generate embedding if content has changed
+          if (checkRows[0].conteudo !== conteudo) {
+            const embedding = await getEmbedding(conteudo);
+            embeddingString = `[${embedding.join(',')}]`;
+          } else {
+            // Keep existing embedding by querying it and converting back (or just update title and keep embedding)
+            // But to make it simple and clean, if it doesn't change, we can just run a query without updating the embedding, or just update the embedding with the same value
+            const [embRows]: any = await pool.query('SELECT VECTOR_TO_STRING(embedding) as emb FROM vector_documentos WHERE id = ?', [id]);
+            embeddingString = embRows[0].emb;
+          }
+          
+          await pool.query(
+            'UPDATE vector_documentos SET titulo = ?, conteudo = ?, embedding = string_to_vector(?) WHERE id = ?',
+            [titulo, conteudo, embeddingString, id]
+          );
+          
+          return { id, titulo, success: true };
+        } catch (err: any) {
+          set.status = 500;
+          return { error: `Erro ao atualizar documento: ${err.message}` };
+        }
+      }, {
+        body: t.Object({
+          titulo: t.String(),
+          conteudo: t.String()
+        })
+      })
+      
+      // Delete Document
+      .delete('/documents/:id', async ({ params, set }) => {
+        const id = parseInt(params.id);
+        const [result]: any = await pool.query('DELETE FROM vector_documentos WHERE id = ?', [id]);
+        if (result.affectedRows === 0) {
+          set.status = 404;
+          return { error: 'Documento não encontrado' };
+        }
+        return { success: true };
+      })
+      
+      // Ranked Vector Similarity Search
+      .post('/search', async ({ body, set }) => {
+        const { query } = body;
+        
+        try {
+          // 1. Generate embedding for the search query
+          const embedding = await getEmbedding(query);
+          const embeddingString = `[${embedding.join(',')}]`;
+          
+          // 2. Perform vector cosine distance query on MySQL
+          const [rows]: any = await pool.query(
+            `SELECT id, titulo, conteudo, 
+                    (1 - VECTOR_DISTANCE(embedding, string_to_vector(?), 'COSINE')) AS similarity 
+             FROM vector_documentos 
+             ORDER BY similarity DESC 
+             LIMIT 10`,
+            [embeddingString]
+          );
+          
+          return rows;
+        } catch (err: any) {
+          set.status = 500;
+          return { error: `Erro na busca por vetor: ${err.message}` };
+        }
+      }, {
+        body: t.Object({
+          query: t.String()
+        })
+      })
+  )
+  
+  // SPA Fallback: serve index.html for non-API client routes
+  .get('/', () => Bun.file('src/client/dist/index.html'))
+  .get('/*', ({ path, set }) => {
+    if (path.startsWith('/api')) {
+      set.status = 404;
+      return { error: 'Not Found' };
+    }
+    return Bun.file('src/client/dist/index.html');
+  })
+  
+  .listen(port);
+
+console.log(`Server running at http://localhost:${port}`);
