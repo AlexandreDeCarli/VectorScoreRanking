@@ -1,18 +1,18 @@
 services:
   db:
-    image: mysql:9.0
+    image: mariadb:11.8
     container_name: vector_db
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: meu_vector_db
-      MYSQL_USER: app_user
-      MYSQL_PASSWORD: app_password
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: meu_vector_db
+      MARIADB_USER: app_user
+      MARIADB_PASSWORD: app_password
     ports:
       - "3306:3306"
     volumes:
       - ./database.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -28,6 +28,7 @@ services:
       DB_USER: app_user
       DB_PASS: app_password
       DB_NAME: meu_vector_db
+      DB_DIALECT: mariadb
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL: gemini-embedding-2
       APP_USERNAME: ${APP_USERNAME:-admin}

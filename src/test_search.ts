@@ -1,5 +1,6 @@
 import { pool } from './db';
 import { getEmbedding } from './gemini';
+import { SQL_STRING_TO_VECTOR, SQL_COSINE_SIMILARITY } from './sql-dialect';
 
 async function runTest() {
   console.log('--- VECTOR SEARCH INTEGRATION TEST ---');
@@ -38,7 +39,7 @@ async function runTest() {
       const embeddingString = `[${embedding.join(',')}]`;
       
       await pool.query(
-        'INSERT INTO vector_documentos (titulo, conteudo, embedding) VALUES (?, ?, string_to_vector(?))',
+        `INSERT INTO vector_documentos (titulo, conteudo, embedding) VALUES (?, ?, ${SQL_STRING_TO_VECTOR})`,
         [doc.titulo, doc.conteudo, embeddingString]
       );
     }
@@ -53,7 +54,7 @@ async function runTest() {
 
     const [results]: any = await pool.query(
       `SELECT id, titulo, 
-              (1 - VECTOR_DISTANCE(embedding, string_to_vector(?), 'COSINE')) AS similarity 
+              ${SQL_COSINE_SIMILARITY} AS similarity 
        FROM vector_documentos 
        WHERE titulo LIKE "[TESTE] %"
        ORDER BY similarity DESC`,

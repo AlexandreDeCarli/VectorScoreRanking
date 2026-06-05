@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia';
 import { authPlugin } from './auth';
 import { pool } from './db';
 import { getEmbedding } from './gemini';
+import { SQL_STRING_TO_VECTOR, SQL_VECTOR_TO_STRING, SQL_COSINE_SIMILARITY } from './sql-dialect';
 
 const port = process.env.PORT || 3000;
 
@@ -76,7 +77,7 @@ export const app = new Elysia()
           const embeddingString = `[${embedding.join(',')}]`;
           
           const [result]: any = await pool.query(
-            'INSERT INTO vector_documentos (titulo, conteudo, embedding) VALUES (?, ?, string_to_vector(?))',
+            `INSERT INTO vector_documentos (titulo, conteudo, embedding) VALUES (?, ?, ${SQL_STRING_TO_VECTOR})`,
             [titulo, conteudo, embeddingString]
           );
           
@@ -114,12 +115,12 @@ export const app = new Elysia()
           } else {
             // Keep existing embedding by querying it and converting back (or just update title and keep embedding)
             // But to make it simple and clean, if it doesn't change, we can just run a query without updating the embedding, or just update the embedding with the same value
-            const [embRows]: any = await pool.query('SELECT VECTOR_TO_STRING(embedding) as emb FROM vector_documentos WHERE id = ?', [id]);
+            const [embRows]: any = await pool.query(`SELECT ${SQL_VECTOR_TO_STRING} as emb FROM vector_documentos WHERE id = ?`, [id]);
             embeddingString = embRows[0].emb;
           }
           
           await pool.query(
-            'UPDATE vector_documentos SET titulo = ?, conteudo = ?, embedding = string_to_vector(?) WHERE id = ?',
+            `UPDATE vector_documentos SET titulo = ?, conteudo = ?, embedding = ${SQL_STRING_TO_VECTOR} WHERE id = ?`,
             [titulo, conteudo, embeddingString, id]
           );
           
@@ -158,7 +159,7 @@ export const app = new Elysia()
           // 2. Perform vector cosine distance query on MySQL
           const [rows]: any = await pool.query(
             `SELECT id, titulo, conteudo, 
-                    (1 - VECTOR_DISTANCE(embedding, string_to_vector(?), 'COSINE')) AS similarity 
+                    ${SQL_COSINE_SIMILARITY} AS similarity 
              FROM vector_documentos 
              ORDER BY similarity DESC 
              LIMIT 10`,
@@ -194,6 +195,10 @@ export const app = new Elysia()
   })
   
 if (process.env.NODE_ENV !== 'test') {
+  // Run pending database migrations before accepting requests
+  const { runMigrations } = await import('./migrate');
+  await runMigrations();
+  
   app.listen(port);
   console.log(`Server running at http://localhost:${port}`);
 }
