@@ -1,4 +1,3 @@
-import { staticPlugin } from '@elysiajs/static';
 import { Elysia, t } from 'elysia';
 import { authPlugin } from './auth';
 import { pool } from './db';
@@ -7,11 +6,6 @@ import { getEmbedding } from './gemini';
 const port = process.env.PORT || 3000;
 
 const app = new Elysia()
-  // Serve static files built by Vite/React
-  .use(staticPlugin({
-    assets: 'src/client/dist',
-    prefix: '/'
-  }))
   // Helper for auth sign
   .use(authPlugin)
   
@@ -182,6 +176,12 @@ const app = new Elysia()
         })
       })
   )
+  
+  // Serve static assets directly using Bun.file
+  .get('/assets/*', ({ params }) => {
+    const assetPath = `src/client/dist/assets/${params['*']}`;
+    return Bun.file(assetPath);
+  })
   
   // SPA Fallback: serve index.html for non-API client routes
   .get('/', () => Bun.file('src/client/dist/index.html'))
