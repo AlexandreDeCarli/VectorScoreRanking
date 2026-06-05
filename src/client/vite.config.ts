@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
@@ -11,5 +12,10 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  test: {
+    environment: 'happy-dom',
+    setupFiles: './src/tests/setup.ts',
+    globals: true,
   }
 });

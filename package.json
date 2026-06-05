@@ -4,7 +4,9 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun run --watch src/index.ts",
-    "test:search": "bun run src/test_search.ts"
+    "test:search": "bun run src/test_search.ts",
+    "test": "DB_HOST=${DB_HOST:-127.0.0.1} bun test src/tests/*.ts",
+    "test:all": "bun run test && cd src/client && bun run test"
   },
   "dependencies": {
     "@elysiajs/jwt": "^1.1.0",
