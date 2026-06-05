@@ -8,7 +8,7 @@ export const authPlugin = new Elysia()
       secret: process.env.JWT_SECRET || 'local_jwt_secret',
     })
   )
-  .derive(async ({ jwt, headers }) => {
+  .derive({ as: 'global' }, async ({ jwt, headers }) => {
     const authHeader = headers['authorization'];
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return { user: null };
