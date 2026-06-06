@@ -97,7 +97,7 @@ Sem nenhuma das palavras "programar" ou "inteligência artificial" existirem nos
 - Suporta 3 métricas de distância: **Cosseno (`COSINE`)**, **Produto Escalar (`DOT`)** e **Euclidiana (`EUCLIDEAN`)**
 - Tradução dinâmica das funções vetoriais de acordo com o dialeto de banco de dados ativo (MariaDB vs MySQL HeatWave)
 - Retorna o ranking ordenado de forma correta (`DESC` para Cosseno/Dot, e `ASC` para Euclidiana - menor distância é melhor)
-- Score visual dinâmico com badge de pontuação customizado por métrica e destaque de relevância inteligente
+- Score visual dinâmico com badge de pontuação customizado por métrica
 
 ### 🗄️ Compatibilidade Multi-Banco
 - **Desenvolvimento**: MariaDB 11.8 com `VEC_FromText()`, `VEC_DISTANCE_COSINE()`, índice HNSW
@@ -111,8 +111,8 @@ Sem nenhuma das palavras "programar" ou "inteligência artificial" existirem nos
 - Idempotentes: nunca re-aplicam uma migration já executada
 
 ### ✅ Suite de Testes
-- **16 testes backend** (Bun Test): DB, Gemini, Auth JWT, API REST completa (incluindo as três métricas vetoriais)
-- **16 testes frontend** (Vitest + Happy DOM + React Testing Library): Login, DocumentForm, Dashboard (incluindo sidebar colapsável, visualizações compacta/detalhada e seletor de métricas)
+- **16 testes backend** (Bun Test): DB, Gemini, Auth JWT, API REST completa
+- **16 testes frontend** (Vitest + Happy DOM + React Testing Library): Login, DocumentForm, Dashboard
 - Comando único: `bun run test:all`
 
 ---
