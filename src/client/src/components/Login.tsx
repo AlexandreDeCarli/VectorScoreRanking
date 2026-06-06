@@ -65,8 +65,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }} disabled={loading}>
-            {loading ? <span className="loading-spinner"></span> : 'Entrar'}
+          <button type="submit" className="btn btn-primary btn-submit" style={{ width: '100%', marginTop: '10px' }} disabled={loading}>
+            {loading ? <span className="loading-spinner"></span> : 'Acessar Painel'}
           </button>
         </form>
       </div>

@@ -83,7 +83,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({ documentId, onClose,
         {error && <div className="alert alert-danger">{error}</div>}
 
         {fetching ? (
-          <div style={{ textAlign: 'center', padding: '20px' }}>Carregando dados...</div>
+          <div className="loading-container">Carregando dados...</div>
         ) : (
           <form onSubmit={handleSubmit}>
             {/* Upload Area for New Files */}
@@ -96,7 +96,12 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({ documentId, onClose,
                   accept=".txt,.md,.json,.html,.xml,.csv"
                   onChange={handleFileUpload}
                 />
-                <div style={{ fontSize: '2rem', color: 'var(--accent-color)' }}>📁</div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="dropzone-icon" style={{ display: 'inline-block', margin: '0 auto 10px auto' }}>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <polyline points="9 15 12 12 15 15"></polyline>
+                </svg>
                 <p>Arraste ou clique para fazer upload de um arquivo de texto (.txt, .md, etc.)</p>
               </div>
             )}
@@ -130,10 +135,10 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({ documentId, onClose,
 
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
-                Cancelar
+                {documentId !== null ? 'Cancelar Edição' : 'Cancelar Criação'}
               </button>
               <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? <span className="loading-spinner"></span> : 'Salvar'}
+                {loading ? <span className="loading-spinner"></span> : 'Salvar Documento'}
               </button>
             </div>
           </form>

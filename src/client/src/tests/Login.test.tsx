@@ -17,7 +17,7 @@ describe('Login Component', () => {
     
     expect(screen.getByLabelText(/Usuário/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Senha/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Entrar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Acessar Painel/i })).toBeInTheDocument();
   });
 
   it('should call api.login and onLoginSuccess on form submission with correct credentials', async () => {
@@ -28,7 +28,7 @@ describe('Login Component', () => {
 
     const userInput = screen.getByLabelText(/Usuário/i);
     const passwordInput = screen.getByLabelText(/Senha/i);
-    const submitBtn = screen.getByRole('button', { name: /Entrar/i });
+    const submitBtn = screen.getByRole('button', { name: /Acessar Painel/i });
 
     fireEvent.change(userInput, { target: { value: 'admin' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -47,7 +47,7 @@ describe('Login Component', () => {
 
     const userInput = screen.getByLabelText(/Usuário/i);
     const passwordInput = screen.getByLabelText(/Senha/i);
-    const submitBtn = screen.getByRole('button', { name: /Entrar/i });
+    const submitBtn = screen.getByRole('button', { name: /Acessar Painel/i });
 
     fireEvent.change(userInput, { target: { value: 'admin' } });
     fireEvent.change(passwordInput, { target: { value: 'wrongpass' } });

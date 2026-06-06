@@ -73,11 +73,11 @@ export const api = {
     return data;
   },
 
-  async search(query: string) {
+  async search(query: string, metric: 'COSINE' | 'DOT' | 'EUCLIDEAN' = 'COSINE') {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ query })
+      body: JSON.stringify({ query, metric })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erro ao realizar busca vetorial');

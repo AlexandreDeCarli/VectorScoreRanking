@@ -39,3 +39,49 @@ export const SQL_VECTOR_TO_STRING = isMariaDB
 export const SQL_COSINE_SIMILARITY = isMariaDB
   ? '(1 - VEC_DISTANCE_COSINE(embedding, VEC_FromText(?)))'
   : "(1 - DISTANCE(embedding, STRING_TO_VECTOR(?), 'COSINE'))";
+
+export type MetricType = 'COSINE' | 'DOT' | 'EUCLIDEAN';
+
+/**
+ * Returns the dynamic SQL fragments for scoring and sorting based on the requested metric.
+ */
+export function getVectorSearchSQL(metric: MetricType = 'COSINE') {
+  if (isMariaDB) {
+    switch (metric) {
+      case 'COSINE':
+        return {
+          select: '(1 - VEC_DISTANCE_COSINE(embedding, VEC_FromText(?)))',
+          order: 'similarity DESC'
+        };
+      case 'EUCLIDEAN':
+        return {
+          select: 'VEC_DISTANCE_EUCLIDEAN(embedding, VEC_FromText(?))',
+          order: 'similarity ASC'
+        };
+      case 'DOT':
+        return {
+          select: 'VEC_DISTANCE(embedding, VEC_FromText(?))',
+          order: 'similarity DESC'
+        };
+    }
+  } else {
+    switch (metric) {
+      case 'COSINE':
+        return {
+          select: "(1 - DISTANCE(embedding, STRING_TO_VECTOR(?), 'COSINE'))",
+          order: 'similarity DESC'
+        };
+      case 'EUCLIDEAN':
+        return {
+          select: "DISTANCE(embedding, STRING_TO_VECTOR(?), 'EUCLIDEAN')",
+          order: 'similarity ASC'
+        };
+      case 'DOT':
+        return {
+          select: "DISTANCE(embedding, STRING_TO_VECTOR(?), 'DOT')",
+          order: 'similarity DESC'
+        };
+    }
+  }
+}
+

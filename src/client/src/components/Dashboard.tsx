@@ -23,9 +23,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [metric, setMetric] = useState<'COSINE' | 'DOT' | 'EUCLIDEAN'>('COSINE');
   const [error, setError] = useState<string | null>(null);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('detailed');
   
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -68,7 +71,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     setSearching(true);
     setError(null);
     try {
-      const results = await api.search(searchQuery);
+      const results = await api.search(searchQuery, metric);
       setSearchResults(results);
     } catch (err: any) {
       setError(err.message || 'Erro ao buscar vetores');
@@ -93,58 +96,72 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   };
 
   const formatScore = (similarity: number) => {
-    const percentage = Math.max(0, Math.min(100, similarity * 100));
-    return `${percentage.toFixed(1)}%`;
+    if (metric === 'COSINE') {
+      const percentage = Math.max(0, Math.min(100, similarity * 100));
+      return `${percentage.toFixed(1)}%`;
+    }
+    if (metric === 'EUCLIDEAN') {
+      return `d = ${similarity.toFixed(4)}`;
+    }
+    return `score = ${similarity.toFixed(4)}`;
   };
 
   return (
-    <div>
+    <div className="dashboard-layout">
       <header className="app-header">
         <div className="header-container">
           <h1>VectorScore</h1>
           <div className="user-controls">
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Logado como Admin</span>
-            <button className="btn btn-secondary" onClick={onLogout}>Sair</button>
+            <span className="user-badge">Logado como Admin</span>
+            <button className="btn btn-secondary" onClick={onLogout}>Sair da Conta</button>
           </div>
         </div>
       </header>
 
-      <main className="main-content">
-        {error && <div className="alert alert-danger">{error}</div>}
+      <div className={`dashboard-body ${isSidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}`}>
+        {/* Left Sidebar: Document List */}
+        <aside className="sidebar-panel">
+          <div className="sidebar-header">
+            <h2>Documentos Salvos ({documents.length})</h2>
+            <button className="btn btn-primary" onClick={handleOpenCreateForm} title="Inserir Documento">+</button>
+          </div>
 
-        <div className="dashboard-grid">
-          {/* Left Side: Document List */}
-          <div>
-            <div className="section-title">
-              <h2>Documentos Salvos ({documents.length})</h2>
-              <button className="btn btn-primary" onClick={handleOpenCreateForm}>+ Novo Documento</button>
-            </div>
+          <div className="sidebar-content">
+            {error && <div className="alert alert-danger">{error}</div>}
 
             {loadingDocs ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>Carregando documentos...</div>
+              <div className="loading-container">Carregando...</div>
             ) : documents.length === 0 ? (
-              <div className="glass-card empty-state">
-                <p>Nenhum documento cadastrado no banco de dados.</p>
-                <p style={{ fontSize: '0.85rem', marginTop: '10px' }}>
-                  Clique em "+ Novo Documento" para inserir o primeiro texto e gerar seu embedding.
+              <div className="empty-state">
+                <p>Nenhum documento cadastrado.</p>
+                <p className="empty-state-subtitle">
+                  Insira o primeiro texto para gerar seu embedding.
                 </p>
               </div>
             ) : (
               <div className="document-list">
                 {documents.map((doc) => (
-                  <div key={doc.id} className="glass-card document-item">
+                  <div key={doc.id} className="glass-card document-item" title={doc.titulo}>
                     <div className="doc-info">
                       <h3>{doc.titulo}</h3>
                       <div className="doc-meta">
-                        Criado em: {new Date(doc.created_at).toLocaleString('pt-BR')}
+                        {new Date(doc.created_at).toLocaleDateString('pt-BR')}
                       </div>
                     </div>
                     <div className="doc-actions">
-                      <button className="btn btn-secondary btn-icon" title="Editar" onClick={() => handleOpenEditForm(doc.id)}>
-                        ✏️
+                      <button className="btn btn-secondary btn-icon" title="Editar Documento" onClick={() => handleOpenEditForm(doc.id)}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                          <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
                       </button>
-                      <button className="btn btn-danger btn-icon" title="Excluir" onClick={() => handleDelete(doc.id, doc.titulo)}>
-                        🗑️
+                      <button className="btn btn-danger btn-icon" title="Excluir Documento" onClick={() => handleDelete(doc.id, doc.titulo)}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          <line x1="10" y1="11" x2="10" y2="17"></line>
+                          <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
                       </button>
                     </div>
                   </div>
@@ -152,14 +169,74 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               </div>
             )}
           </div>
+        </aside>
 
-          {/* Right Side: Vector Search */}
-          <div>
-            <div className="section-title">
+        {/* Right / Main Panel: Vector Search */}
+        <main className="search-main-panel">
+          <div className="search-container-inner">
+            <div className="search-panel-header">
+              <button 
+                type="button" 
+                className="btn sidebar-toggle-btn"
+                onClick={() => setIsSidebarOpen(prev => !prev)}
+                title={isSidebarOpen ? "Recolher Documentos" : "Mostrar Documentos"}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {isSidebarOpen ? (
+                    <>
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </>
+                  ) : (
+                    <>
+                      <line x1="3" y1="12" x2="21" y2="12"></line>
+                      <line x1="3" y1="6" x2="21" y2="6"></line>
+                      <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </>
+                  )}
+                </svg>
+                <span>{isSidebarOpen ? "Esconder Documentos" : "Ver Documentos Salvos"}</span>
+              </button>
               <h2>Busca por Semelhança (Vetores)</h2>
             </div>
 
             <div className="glass-card search-panel">
+              {/* Vector Metric Selector controls */}
+              <div className="metric-selector-group">
+                <span className="metric-selector-label">Métrica de Distância Vetorial</span>
+                <div className="metric-options">
+                  <button
+                    type="button"
+                    className={`btn metric-option-btn ${metric === 'COSINE' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setMetric('COSINE')}
+                    disabled={searching}
+                  >
+                    Cosseno
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn metric-option-btn ${metric === 'DOT' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setMetric('DOT')}
+                    disabled={searching}
+                  >
+                    Produto Escalar
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn metric-option-btn ${metric === 'EUCLIDEAN' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setMetric('EUCLIDEAN')}
+                    disabled={searching}
+                  >
+                    Euclidiana
+                  </button>
+                </div>
+                <p className="metric-description">
+                  {metric === 'COSINE' && '🔍 COSSENO: Busca semântica e embeddings de texto normalizados (1 - distância).'}
+                  {metric === 'DOT' && '⚡ PRODUTO ESCALAR: Produto escalar direto para embeddings não normalizados.'}
+                  {metric === 'EUCLIDEAN' && '📐 EUCLIDIANA: Distância geométrica direta entre vetores (menor distância é melhor).'}
+                </p>
+              </div>
+
               <form onSubmit={handleSearchSubmit} className="search-box">
                 <input
                   type="text"
@@ -171,41 +248,79 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                   disabled={searching}
                 />
                 <button type="submit" className="btn btn-primary" disabled={searching}>
-                  {searching ? <span className="loading-spinner"></span> : '🔍 Buscar'}
+                  {searching ? (
+                    <span className="loading-spinner"></span>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', display: 'inline-block', verticalAlign: 'middle' }}>
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                      </svg>
+                      <span>Buscar</span>
+                    </>
+                  )}
                 </button>
               </form>
 
-              {searchResults.length > 0 && (
-                <div className="results-list">
-                  <div className="doc-meta" style={{ marginBottom: '10px' }}>
-                    Resultados ranqueados por aproximação de cosseno:
-                  </div>
-                  {searchResults.map((res) => {
-                    const isHigh = res.similarity >= 0.7;
-                    return (
-                      <div key={res.id} className="result-item">
-                        <div className="result-header">
-                          <h4>{res.titulo}</h4>
-                          <span className={`score-badge ${isHigh ? 'score-high' : ''}`}>
-                            {formatScore(res.similarity)}
-                          </span>
-                        </div>
-                        <div className="result-body">{res.conteudo}</div>
+              <div className="search-results-container">
+                {searchResults.length > 0 && (
+                  <div className={`results-list ${viewMode === 'compact' ? 'results-list-compact' : 'results-list-detailed'}`}>
+                    <div className="results-header-row">
+                      <div className="doc-meta results-meta">
+                        {metric === 'COSINE' && 'Métrica: Cosseno'}
+                        {metric === 'DOT' && 'Métrica: Produto Escalar'}
+                        {metric === 'EUCLIDEAN' && 'Métrica: Distância Euclidiana'}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <div className="view-mode-selector">
+                        <button
+                          type="button"
+                          className={`view-mode-btn ${viewMode === 'compact' ? 'active' : ''}`}
+                          onClick={() => setViewMode('compact')}
+                          title="Visualização Resumida"
+                        >
+                          Resumido
+                        </button>
+                        <button
+                          type="button"
+                          className={`view-mode-btn ${viewMode === 'detailed' ? 'active' : ''}`}
+                          onClick={() => setViewMode('detailed')}
+                          title="Visualização Detalhada"
+                        >
+                          Detalhado
+                        </button>
+                      </div>
+                    </div>
+                    {searchResults.map((res) => {
+                      const isHigh = metric === 'COSINE'
+                        ? res.similarity >= 0.7
+                        : metric === 'EUCLIDEAN'
+                          ? res.similarity <= 0.4
+                          : res.similarity >= 0.7;
+                      return (
+                        <div key={res.id} className="result-item">
+                          <div className="result-header">
+                            <h4>{res.titulo}</h4>
+                            <span className={`score-badge ${isHigh ? 'score-high' : ''}`}>
+                              {formatScore(res.similarity)}
+                            </span>
+                          </div>
+                          <div className="result-body">{res.conteudo}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-              {searchResults.length === 0 && searchQuery && !searching && (
-                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
-                  Nenhum resultado retornado para a busca.
-                </div>
-              )}
+                {searchResults.length === 0 && searchQuery && !searching && (
+                  <div className="no-results">
+                    Nenhum resultado retornado para a busca.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
 
       {/* Document Create/Edit Modal */}
       {isFormOpen && (

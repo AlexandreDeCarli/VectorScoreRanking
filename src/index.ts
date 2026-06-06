@@ -2,7 +2,7 @@ import { Elysia, t } from 'elysia';
 import { authPlugin } from './auth';
 import { pool } from './db';
 import { getEmbedding } from './gemini';
-import { SQL_STRING_TO_VECTOR, SQL_VECTOR_TO_STRING, SQL_COSINE_SIMILARITY } from './sql-dialect';
+import { SQL_STRING_TO_VECTOR, SQL_VECTOR_TO_STRING, SQL_COSINE_SIMILARITY, getVectorSearchSQL, MetricType } from './sql-dialect';
 
 const port = process.env.PORT || 3000;
 
@@ -149,19 +149,23 @@ export const app = new Elysia()
       
       // Ranked Vector Similarity Search
       .post('/search', async ({ body, set }) => {
-        const { query } = body;
+        const { query, metric } = body;
+        const searchMetric = (metric || 'COSINE') as MetricType;
         
         try {
           // 1. Generate embedding for the search query
           const embedding = await getEmbedding(query);
           const embeddingString = `[${embedding.join(',')}]`;
           
-          // 2. Perform vector cosine distance query on MySQL
+          // 2. Resolve the query scoring function and ordering
+          const { select: scoreSql, order: orderSql } = getVectorSearchSQL(searchMetric);
+          
+          // 3. Perform vector similarity search
           const [rows]: any = await pool.query(
             `SELECT id, titulo, conteudo, 
-                    ${SQL_COSINE_SIMILARITY} AS similarity 
+                    ${scoreSql} AS similarity 
              FROM vector_documentos 
-             ORDER BY similarity DESC 
+             ORDER BY ${orderSql} 
              LIMIT 10`,
             [embeddingString]
           );
@@ -173,14 +177,16 @@ export const app = new Elysia()
         }
       }, {
         body: t.Object({
-          query: t.String()
+          query: t.String(),
+          metric: t.Optional(t.Union([t.Literal('COSINE'), t.Literal('DOT'), t.Literal('EUCLIDEAN')]))
         })
       })
   )
   
-  // Serve static assets directly using Bun.file
-  .get('/assets/*', ({ params }) => {
+  // Serve static assets directly using Bun.file with caching headers
+  .get('/assets/*', ({ params, set }) => {
     const assetPath = `src/client/dist/assets/${params['*']}`;
+    set.headers['Cache-Control'] = 'public, max-age=31536000, immutable';
     return Bun.file(assetPath);
   })
   

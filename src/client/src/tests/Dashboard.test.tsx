@@ -45,7 +45,7 @@ describe('Dashboard Component', () => {
     render(<Dashboard onLogout={() => {}} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Nenhum documento cadastrado no banco de dados.')).toBeInTheDocument();
+      expect(screen.getByText('Nenhum documento cadastrado.')).toBeInTheDocument();
     });
   });
 
@@ -63,7 +63,7 @@ describe('Dashboard Component', () => {
     });
   });
 
-  it('should call api.search and render results on search submit', async () => {
+  it('should call api.search and render results on search submit with COSINE', async () => {
     (api.listDocuments as any).mockResolvedValue([]);
     (api.search as any).mockResolvedValue([
       { id: 1, titulo: 'Resultado da Busca 1', conteudo: 'Exemplo de texto 1', similarity: 0.852 }
@@ -78,10 +78,64 @@ describe('Dashboard Component', () => {
     fireEvent.click(searchBtn);
 
     await waitFor(() => {
-      expect(api.search).toHaveBeenCalledWith('inteligência artificial');
+      expect(api.search).toHaveBeenCalledWith('inteligência artificial', 'COSINE');
       expect(screen.getByText('Resultado da Busca 1')).toBeInTheDocument();
       expect(screen.getByText('Exemplo de texto 1')).toBeInTheDocument();
       expect(screen.getByText('85.2%')).toBeInTheDocument();
+    });
+  });
+
+  it('should call api.search with DOT and render raw score formatting', async () => {
+    (api.listDocuments as any).mockResolvedValue([]);
+    (api.search as any).mockResolvedValue([
+      { id: 1, titulo: 'Resultado DOT', conteudo: 'Exemplo DOT', similarity: 1.23456 }
+    ]);
+
+    render(<Dashboard onLogout={() => {}} />);
+
+    // Select Produto Escalar
+    const dotBtn = screen.getByRole('button', { name: /Produto Escalar/i });
+    fireEvent.click(dotBtn);
+
+    expect(screen.getByText(/⚡ PRODUTO ESCALAR:/)).toBeInTheDocument();
+
+    const searchInput = screen.getByPlaceholderText(/Pesquise conceitos/i);
+    const searchBtn = screen.getByRole('button', { name: /Buscar/i });
+
+    fireEvent.change(searchInput, { target: { value: 'outro termo' } });
+    fireEvent.click(searchBtn);
+
+    await waitFor(() => {
+      expect(api.search).toHaveBeenCalledWith('outro termo', 'DOT');
+      expect(screen.getByText('Resultado DOT')).toBeInTheDocument();
+      expect(screen.getByText('score = 1.2346')).toBeInTheDocument();
+    });
+  });
+
+  it('should call api.search with EUCLIDEAN and render distance formatting', async () => {
+    (api.listDocuments as any).mockResolvedValue([]);
+    (api.search as any).mockResolvedValue([
+      { id: 1, titulo: 'Resultado EUCLIDEAN', conteudo: 'Exemplo EUCLIDEAN', similarity: 0.35 }
+    ]);
+
+    render(<Dashboard onLogout={() => {}} />);
+
+    // Select Euclidiana
+    const euclideanBtn = screen.getByRole('button', { name: /Euclidiana/i });
+    fireEvent.click(euclideanBtn);
+
+    expect(screen.getByText(/📐 EUCLIDIANA:/)).toBeInTheDocument();
+
+    const searchInput = screen.getByPlaceholderText(/Pesquise conceitos/i);
+    const searchBtn = screen.getByRole('button', { name: /Buscar/i });
+
+    fireEvent.change(searchInput, { target: { value: 'outro termo 2' } });
+    fireEvent.click(searchBtn);
+
+    await waitFor(() => {
+      expect(api.search).toHaveBeenCalledWith('outro termo 2', 'EUCLIDEAN');
+      expect(screen.getByText('Resultado EUCLIDEAN')).toBeInTheDocument();
+      expect(screen.getByText('d = 0.3500')).toBeInTheDocument();
     });
   });
 
@@ -90,9 +144,64 @@ describe('Dashboard Component', () => {
 
     render(<Dashboard onLogout={() => {}} />);
 
-    const newBtn = screen.getByRole('button', { name: /\+ Novo Documento/i });
+    const newBtn = screen.getByTitle('Inserir Documento');
     fireEvent.click(newBtn);
 
     expect(screen.getByTestId('mock-document-form')).toBeInTheDocument();
+  });
+
+  it('should toggle sidebar layout when clicking the toggle button', async () => {
+    (api.listDocuments as any).mockResolvedValue([]);
+
+    const { container } = render(<Dashboard onLogout={() => {}} />);
+
+    // Initially open
+    expect(container.querySelector('.sidebar-open')).toBeInTheDocument();
+    expect(container.querySelector('.sidebar-collapsed')).not.toBeInTheDocument();
+
+    const toggleBtn = screen.getByRole('button', { name: /Esconder Documentos/i });
+    fireEvent.click(toggleBtn);
+
+    // Now collapsed
+    expect(container.querySelector('.sidebar-collapsed')).toBeInTheDocument();
+    expect(container.querySelector('.sidebar-open')).not.toBeInTheDocument();
+
+    // Text changed
+    expect(screen.getByText('Ver Documentos Salvos')).toBeInTheDocument();
+  });
+
+  it('should toggle view mode between detailed and compact', async () => {
+    (api.listDocuments as any).mockResolvedValue([]);
+    (api.search as any).mockResolvedValue([
+      { id: 1, titulo: 'Documento Teste', conteudo: 'Conteudo do documento detalhado', similarity: 0.9 }
+    ]);
+
+    const { container } = render(<Dashboard onLogout={() => {}} />);
+
+    // Perform search to render results list
+    const searchInput = screen.getByPlaceholderText(/Pesquise conceitos/i);
+    const searchBtn = screen.getByRole('button', { name: /Buscar/i });
+    fireEvent.change(searchInput, { target: { value: 'teste' } });
+    fireEvent.click(searchBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Documento Teste')).toBeInTheDocument();
+      expect(screen.getByText('Conteudo do documento detalhado')).toBeInTheDocument();
+    });
+
+    // Toggle to Compact
+    const compactBtn = screen.getByRole('button', { name: /Resumido/i });
+    fireEvent.click(compactBtn);
+
+    // Verify it is compact (parent has compact class)
+    expect(container.querySelector('.results-list-compact')).toBeInTheDocument();
+    expect(container.querySelector('.results-list-detailed')).not.toBeInTheDocument();
+
+    // Toggle back to Detailed
+    const detailedBtn = screen.getByRole('button', { name: /Detalhado/i });
+    fireEvent.click(detailedBtn);
+
+    expect(container.querySelector('.results-list-compact')).not.toBeInTheDocument();
+    expect(container.querySelector('.results-list-detailed')).toBeInTheDocument();
   });
 });

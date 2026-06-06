@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-05T23:11:00Z",
+  "title": "Design System: VectorScoreRanking",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Tech Indigo",
+        "canonical": "oklch(60% 0.22 285)",
+        "tonalRamp": [
+          "oklch(20% 0.08 285)",
+          "oklch(30% 0.12 285)",
+          "oklch(40% 0.16 285)",
+          "oklch(50% 0.20 285)",
+          "oklch(60% 0.22 285)",
+          "oklch(70% 0.18 285)",
+          "oklch(80% 0.13 285)",
+          "oklch(90% 0.07 285)"
+        ]
+      },
+      "neutral-bg": {
+        "role": "neutral",
+        "displayName": "Deep Space Black",
+        "canonical": "oklch(10% 0.01 260)",
+        "tonalRamp": [
+          "oklch(5% 0.005 260)",
+          "oklch(10% 0.01 260)",
+          "oklch(15% 0.01 260)",
+          "oklch(20% 0.015 260)",
+          "oklch(35% 0.015 260)",
+          "oklch(55% 0.015 260)",
+          "oklch(75% 0.01 260)",
+          "oklch(95% 0.005 260)"
+        ]
+      },
+      "neutral-surface": {
+        "role": "neutral",
+        "displayName": "Terminal Surface",
+        "canonical": "oklch(15% 0.015 265)",
+        "tonalRamp": [
+          "oklch(10% 0.01 265)",
+          "oklch(15% 0.015 265)",
+          "oklch(20% 0.02 265)",
+          "oklch(25% 0.02 265)",
+          "oklch(40% 0.02 265)",
+          "oklch(60% 0.015 265)",
+          "oklch(80% 0.01 265)",
+          "oklch(95% 0.005 265)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display Title",
+        "purpose": "Main brand logo and primary headers."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Major dashboard and panel segment headers."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Component headings and list item names."
+      },
+      "body": {
+        "displayName": "Body Text",
+        "purpose": "Interface instruction copy and document content."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Button labels, input eyebrows, and metadata counters."
+      }
+    },
+    "shadows": [
+      {
+        "name": "glow-interactive",
+        "value": "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)",
+        "purpose": "Soft deep interactive shadow appearing on element hover."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-smooth",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Standard exponential transition easing curve."
+      },
+      {
+        "name": "duration-standard",
+        "value": "0.3s",
+        "purpose": "Default duration for interactive state switches."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "tablet",
+        "value": "900px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Standard action submit button, featuring a linear gradient.",
+      "html": "<button class=\"ds-btn-primary\">SALVAR ALTERAÇÕES</button>",
+      "css": ".ds-btn-primary { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #ffffff; padding: 12px 24px; font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.35); } .ds-btn-primary:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.45); } .ds-btn-primary:focus-visible { outline: 2px solid #8b5cf6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Used for passive or secondary dashboard actions.",
+      "html": "<button class=\"ds-btn-secondary\">CANCELAR</button>",
+      "css": ".ds-btn-secondary { background: rgba(255, 255, 255, 0.08); color: #f8fafc; padding: 12px 24px; font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-secondary:hover { background-color: rgba(255, 255, 255, 0.15); }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Standard text input field for forms and queries.",
+      "html": "<input type=\"text\" class=\"ds-input-field\" placeholder=\"Digite o valor...\" />",
+      "css": ".ds-input-field { width: 100%; padding: 12px 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: #f8fafc; font-family: 'Outfit', sans-serif; font-size: 1rem; transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1); } .ds-input-field:focus { outline: none; background: rgba(255, 255, 255, 0.08); border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15); } .ds-input-field::placeholder { color: #64748b; }"
+    },
+    {
+      "name": "Glass Card",
+      "kind": "card",
+      "refersTo": "card-container",
+      "description": "Visual panel wrapper with backdrop blur overlay styling.",
+      "html": "<div class=\"ds-glass-card\"><h3 class=\"ds-card-title\">Painel de Documentos</h3><p class=\"ds-card-body\">Este é o corpo informativo do painel. A densidade visual é preservada.</p></div>",
+      "css": ".ds-glass-card { background: rgba(18, 19, 26, 0.65); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 24px; transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1); } .ds-glass-card:hover { border-color: rgba(255, 255, 255, 0.15); transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); } .ds-card-title { font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 600; color: #f8fafc; margin-bottom: 8px; } .ds-card-body { font-family: 'Outfit', sans-serif; font-size: 0.95rem; color: #94a3b8; line-height: 1.5; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Semantic Terminal",
+    "overview": "\"The Semantic Terminal\" is a developer-focused, information-dense, and highly structured dashboard design. Designed specifically for inspecting vector similarity and managing embedding indices, it rejects decorative fluff in favor of raw database reality, technical utility, and visual structure. The experience should feel like walking into a well-lit server room: silent, hyper-organized, and fast.",
+    "keyCharacteristics": [
+      "Information-Dense Grid Layouts: Maximized screen utility with clean panel boundaries.",
+      "Precise Accent Anchoring: Accents are reserved exclusively for interactive elements and state feedback.",
+      "Micro-elevation Responses: Interfaces are flat and clean at rest, lifting only when hovered or active."
+    ],
+    "rules": [
+      {
+        "name": "The Rarity Rule",
+        "body": "Accents (indigo, cyan, violet) must occupy less than 10% of the screen real estate. Color is a high-contrast indicator of interactivity or similarity, not a background wash.",
+        "section": "colors"
+      },
+      {
+        "name": "The High-Contrast Input Rule",
+        "body": "Input values and active selections must meet a minimum 4.5:1 contrast against their dark background. Text should never be hard to read for the sake of \"minimalism.\"",
+        "section": "colors"
+      },
+      {
+        "name": "The No-Caps Prose Rule",
+        "body": "All-caps formatting is strictly limited to short labels, eyebrows, and button prompts (under 4 words). Sentence-length body text must never be uppercase.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-Rest Rule",
+        "body": "Interactive elements (cards, buttons) rest flat against the surface. Shadow offsets and border highlight transitions trigger exclusively as feedback to user hover or focus states.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Flat Border Rule",
+        "body": "All borders separating panels must be thin (1px) and dark (rgba(255, 255, 255, 0.08)), serving as clean visual boundaries rather than glowing lines.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do maintain a strict 4.5:1 text contrast on all dashboard elements.",
+      "Do preserve the Outift font stack across all components and platforms.",
+      "Do use text-wrap: balance on H1 and H2 headers to prevent awkward line breaks.",
+      "Do use transition speeds of exactly 0.3s with cubic-bezier(0.4, 0, 0.2, 1) for smooth micro-interactions."
+    ],
+    "donts": [
+      "Don't use colored side-stripe borders (e.g. border-left: 4px) to denote page sections or alert blocks.",
+      "Don't use gradient text on headers (e.g., background-clip: text combined with gradient backgrounds). Headings must remain solid white.",
+      "Don't animate or transform the size or position of <img> elements during parent container hovers.",
+      "Don't use uppercase eyebrows above every page section title. Use them only for sequence-driven labels.",
+      "Don't add random backdrop blur glassmorphism as a default background decoration. Use solid or standard semi-transparent surfaces unless establishing overlay depth."
+    ]
+  }
+}

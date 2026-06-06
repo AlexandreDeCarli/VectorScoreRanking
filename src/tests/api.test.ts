@@ -116,32 +116,73 @@ describe('Elysia REST API Integration Tests', () => {
     expect(data.conteudo).toContain('veículos que dirigem sozinhos');
   });
 
-  it('should perform vector ranked search and return results', async () => {
+  it('should perform vector ranked search and return results with COSINE, EUCLIDEAN, and DOT metrics', async () => {
     if (!createdDocId) return;
 
-    const req = new Request('http://localhost/api/search', {
+    // Test Cosine Search
+    const reqCosine = new Request('http://localhost/api/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        query: 'transporte autônomo e sensores lidar'
+        query: 'transporte autônomo e sensores lidar',
+        metric: 'COSINE'
       })
     });
+    const resCosine = await app.handle(reqCosine);
+    expect(resCosine.status).toBe(200);
+    const dataCosine: any = await resCosine.json();
+    expect(Array.isArray(dataCosine)).toBe(true);
+    expect(dataCosine.length).toBeGreaterThan(0);
+    const foundCosine = dataCosine.find((d: any) => d.id === createdDocId);
+    expect(foundCosine).toBeDefined();
+    expect(foundCosine.similarity).toBeDefined();
+    expect(typeof foundCosine.similarity).toBe('number');
 
-    const res = await app.handle(req);
-    expect(res.status).toBe(200);
-    const data: any = await res.json();
-    expect(Array.isArray(data)).toBe(true);
-    expect(data.length).toBeGreaterThan(0);
-    
-    // Find our created document in results
-    const found = data.find((d: any) => d.id === createdDocId);
-    expect(found).toBeDefined();
-    expect(found.similarity).toBeDefined();
-    expect(typeof found.similarity).toBe('number');
-  }, 15000);
+    // Test Euclidean Search
+    const reqEuclidean = new Request('http://localhost/api/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        query: 'transporte autônomo e sensores lidar',
+        metric: 'EUCLIDEAN'
+      })
+    });
+    const resEuclidean = await app.handle(reqEuclidean);
+    expect(resEuclidean.status).toBe(200);
+    const dataEuclidean: any = await resEuclidean.json();
+    expect(Array.isArray(dataEuclidean)).toBe(true);
+    expect(dataEuclidean.length).toBeGreaterThan(0);
+    const foundEuclidean = dataEuclidean.find((d: any) => d.id === createdDocId);
+    expect(foundEuclidean).toBeDefined();
+    expect(foundEuclidean.similarity).toBeDefined();
+
+    // Test Dot Search
+    const reqDot = new Request('http://localhost/api/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        query: 'transporte autônomo e sensores lidar',
+        metric: 'DOT'
+      })
+    });
+    const resDot = await app.handle(reqDot);
+    expect(resDot.status).toBe(200);
+    const dataDot: any = await resDot.json();
+    expect(Array.isArray(dataDot)).toBe(true);
+    expect(dataDot.length).toBeGreaterThan(0);
+    const foundDot = dataDot.find((d: any) => d.id === createdDocId);
+    expect(foundDot).toBeDefined();
+    expect(foundDot.similarity).toBeDefined();
+  }, 30000);
 
   it('should delete the created document', async () => {
     if (!createdDocId) return;
