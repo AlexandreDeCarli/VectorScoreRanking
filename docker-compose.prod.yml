@@ -4,8 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: vector_app_prod
-    ports:
-      - "${HOST_PORT:-3000}:3000"
+
     environment:
       PORT: 3000
       DB_HOST: ${DB_HOST}
