@@ -82,5 +82,16 @@ export const api = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erro ao realizar busca vetorial');
     return data;
+  },
+
+  async importDocument(titulo: string, conteudoBase64: string) {
+    const res = await fetch('/api/documents/import', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ titulo, conteudoBase64 })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao importar documento');
+    return data;
   }
 };

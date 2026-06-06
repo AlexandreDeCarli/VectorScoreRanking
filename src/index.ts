@@ -106,6 +106,64 @@ export const app = new Elysia()
         })
       })
       
+      // Import Document (Batch Import endpoint)
+      .post('/documents/import', async ({ body, set }) => {
+        const { titulo, conteudoBase64 } = body;
+        
+        try {
+          // Decode content
+          const conteudo = Buffer.from(conteudoBase64, 'base64').toString('utf-8');
+          
+          // Query database to check if document with the same titulo already exists
+          const [checkRows]: any = await pool.query(
+            'SELECT id, conteudo FROM vector_documentos WHERE titulo = ?',
+            [titulo]
+          );
+          
+          if (checkRows.length === 0) {
+            // Document does NOT exist -> create it
+            const embedding = await getEmbedding(conteudo);
+            const embeddingString = `[${embedding.join(',')}]`;
+            
+            const [result]: any = await pool.query(
+              `INSERT INTO vector_documentos (titulo, conteudo, embedding) VALUES (?, ?, ${SQL_STRING_TO_VECTOR})`,
+              [titulo, conteudo, embeddingString]
+            );
+            
+            return { success: true, action: 'created', id: result.insertId };
+          } else {
+            // Document DOES exist -> compare content
+            const existingId = checkRows[0].id;
+            const existingConteudo = checkRows[0].conteudo;
+            
+            if (existingConteudo !== conteudo) {
+              // Different content -> update embedding and fields (including updated_at)
+              const embedding = await getEmbedding(conteudo);
+              const embeddingString = `[${embedding.join(',')}]`;
+              
+              await pool.query(
+                `UPDATE vector_documentos SET titulo = ?, conteudo = ?, embedding = ${SQL_STRING_TO_VECTOR}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                [titulo, conteudo, embeddingString, existingId]
+              );
+              
+              return { success: true, action: 'updated', id: existingId };
+            } else {
+              // Identical content -> skip update
+              return { success: true, action: 'skipped', id: existingId };
+            }
+          }
+        } catch (err: any) {
+          console.error('[Error] POST /api/documents/import failed:', err);
+          set.status = 500;
+          return { error: `Erro ao importar documento: ${err.message}` };
+        }
+      }, {
+        body: t.Object({
+          titulo: t.String(),
+          conteudoBase64: t.String()
+        })
+      })
+      
       // Update Document (Re-generates vector embedding)
       .put('/documents/:id', async ({ params, body, set }) => {
         const id = parseInt(params.id);

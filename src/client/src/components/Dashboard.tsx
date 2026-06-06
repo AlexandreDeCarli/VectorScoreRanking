@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { DocumentForm } from './DocumentForm';
+import { BatchImportModal } from './BatchImportModal';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -32,6 +33,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [activeDocId, setActiveDocId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -123,7 +125,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         <aside className="sidebar-panel">
           <div className="sidebar-header">
             <h2>Documentos Salvos ({documents.length})</h2>
-            <button className="btn btn-primary" onClick={handleOpenCreateForm} title="Inserir Documento">+</button>
+            <div className="doc-actions">
+              <button className="btn btn-secondary btn-icon" onClick={() => setIsBatchOpen(true)} title="Importar Lote (JSON)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </button>
+              <button className="btn btn-primary btn-icon" onClick={handleOpenCreateForm} title="Inserir Documento">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div className="sidebar-content">
@@ -327,6 +343,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         <DocumentForm
           documentId={activeDocId}
           onClose={() => setIsFormOpen(false)}
+          onSave={handleSaveSuccess}
+        />
+      )}
+
+      {/* Batch Import Modal */}
+      {isBatchOpen && (
+        <BatchImportModal
+          onClose={() => setIsBatchOpen(false)}
           onSave={handleSaveSuccess}
         />
       )}

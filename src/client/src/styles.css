@@ -812,3 +812,169 @@ textarea.form-control {
   min-height: 1.2rem;
 }
 
+/* Batch Import Styles */
+.import-progress-container {
+  margin: 20px 0;
+}
+
+.import-progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-family: monospace;
+}
+
+.import-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 15px;
+}
+
+.import-progress-fill {
+  height: 100%;
+  background: var(--accent-color);
+  width: 0%;
+  transition: width 0.2s ease-out;
+}
+
+.import-terminal-log {
+  background: oklch(0.08 0.005 260);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  padding: 14px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 15px;
+  line-height: 1.4;
+}
+
+.import-terminal-log::-webkit-scrollbar {
+  width: 6px;
+}
+
+.import-terminal-log::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+.import-terminal-log::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+.import-terminal-line {
+  margin-bottom: 4px;
+  white-space: pre-wrap;
+}
+
+.import-terminal-line.success {
+  color: var(--success);
+}
+
+.import-terminal-line.warning {
+  color: var(--warning);
+}
+
+.import-terminal-line.error {
+  color: var(--danger);
+}
+
+.import-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.import-summary-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+}
+
+.import-summary-card h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
+.import-summary-card .stat-val {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.import-summary-card.created .stat-val {
+  color: var(--success);
+}
+
+.import-summary-card.updated .stat-val {
+  color: oklch(0.70 0.16 280);
+}
+
+.import-summary-card.skipped .stat-val {
+  color: var(--text-muted);
+}
+
+.import-summary-card.failed .stat-val {
+  color: var(--danger);
+}
+
+.import-failed-section {
+  margin-top: 20px;
+  border-top: 1px solid var(--border-glass);
+  padding-top: 15px;
+}
+
+.import-failed-section h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--danger);
+  margin-bottom: 10px;
+}
+
+.import-failed-list {
+  max-height: 150px;
+  overflow-y: auto;
+  background: rgba(239, 68, 68, 0.03);
+  border: 1px solid rgba(239, 68, 68, 0.1);
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+
+.import-failed-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.import-failed-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+.import-failed-item {
+  font-size: 0.85rem;
+  color: #f87171;
+  margin-bottom: 6px;
+  font-family: monospace;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.import-failed-item:last-child {
+  margin-bottom: 0;
+}
+
+

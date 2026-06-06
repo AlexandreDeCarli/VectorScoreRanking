@@ -210,4 +210,188 @@ describe('Elysia REST API Integration Tests', () => {
     
     createdDocId = null; // Reset since it is deleted successfully
   });
+
+  describe('POST /api/documents/import integration tests', () => {
+    it('should create a new document via import', async () => {
+      if (!process.env.GEMINI_API_KEY) {
+        console.warn('⚠️ Skipping import creation test: GEMINI_API_KEY is not defined');
+        return;
+      }
+
+      const title = '[TEST-API] Documento Importado Novo';
+      const content = 'Este é o conteúdo do documento importado novo.';
+      const contentBase64 = Buffer.from(content).toString('base64');
+
+      const req = new Request('http://localhost/api/documents/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          titulo: title,
+          conteudoBase64: contentBase64
+        })
+      });
+
+      const res = await app.handle(req);
+      expect(res.status).toBe(200);
+      const data: any = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.action).toBe('created');
+      expect(data.id).toBeDefined();
+      
+      // Check if it was actually created with decoded content
+      const checkReq = new Request(`http://localhost/api/documents/${data.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const checkRes = await app.handle(checkReq);
+      expect(checkRes.status).toBe(200);
+      const checkData: any = await checkRes.json();
+      expect(checkData.titulo).toBe(title);
+      expect(checkData.conteudo).toBe(content);
+    });
+
+    it('should update an existing document via import when content changes', async () => {
+      if (!process.env.GEMINI_API_KEY) {
+        console.warn('⚠️ Skipping import update test: GEMINI_API_KEY is not defined');
+        return;
+      }
+
+      const title = '[TEST-API] Documento Importado Existente';
+      const originalContent = 'Conteúdo original do documento.';
+      const originalContentBase64 = Buffer.from(originalContent).toString('base64');
+
+      // 1. Create first
+      const createReq = new Request('http://localhost/api/documents/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          titulo: title,
+          conteudoBase64: originalContentBase64
+        })
+      });
+      const createRes = await app.handle(createReq);
+      expect(createRes.status).toBe(200);
+      const createData: any = await createRes.json();
+      expect(createData.action).toBe('created');
+      const docId = createData.id;
+
+      // 2. Import again with updated content
+      const updatedContent = 'Conteúdo modificado do documento.';
+      const updatedContentBase64 = Buffer.from(updatedContent).toString('base64');
+
+      const updateReq = new Request('http://localhost/api/documents/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          titulo: title,
+          conteudoBase64: updatedContentBase64
+        })
+      });
+      const updateRes = await app.handle(updateReq);
+      expect(updateRes.status).toBe(200);
+      const updateData: any = await updateRes.json();
+      expect(updateData.success).toBe(true);
+      expect(updateData.action).toBe('updated');
+      expect(updateData.id).toBe(docId);
+
+      // Verify database has updated content
+      const checkReq = new Request(`http://localhost/api/documents/${docId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const checkRes = await app.handle(checkReq);
+      expect(checkRes.status).toBe(200);
+      const checkData: any = await checkRes.json();
+      expect(checkData.conteudo).toBe(updatedContent);
+    });
+
+    it('should skip updating when content is identical', async () => {
+      if (!process.env.GEMINI_API_KEY) {
+        console.warn('⚠️ Skipping import skip test: GEMINI_API_KEY is not defined');
+        return;
+      }
+
+      const title = '[TEST-API] Documento Importado Identico';
+      const content = 'Conteúdo idêntico do documento.';
+      const contentBase64 = Buffer.from(content).toString('base64');
+
+      // 1. Create first
+      const createReq = new Request('http://localhost/api/documents/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          titulo: title,
+          conteudoBase64: contentBase64
+        })
+      });
+      const createRes = await app.handle(createReq);
+      expect(createRes.status).toBe(200);
+      const createData: any = await createRes.json();
+      expect(createData.action).toBe('created');
+      const docId = createData.id;
+
+      // 2. Import again with identical content
+      const skipReq = new Request('http://localhost/api/documents/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          titulo: title,
+          conteudoBase64: contentBase64
+        })
+      });
+      const skipRes = await app.handle(skipReq);
+      expect(skipRes.status).toBe(200);
+      const skipData: any = await skipRes.json();
+      expect(skipData.success).toBe(true);
+      expect(skipData.action).toBe('skipped');
+      expect(skipData.id).toBe(docId);
+    });
+
+    it('should return validation error for invalid import payload', async () => {
+      // Missing conteudoBase64
+      const req1 = new Request('http://localhost/api/documents/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          titulo: '[TEST-API] Documento Sem Conteudo'
+        })
+      });
+      const res1 = await app.handle(req1);
+      expect(res1.status).toBe(422);
+      
+      // Missing titulo
+      const req2 = new Request('http://localhost/api/documents/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          conteudoBase64: 'YWJj'
+        })
+      });
+      const res2 = await app.handle(req2);
+      expect(res2.status).toBe(422);
+    });
+  });
 });
