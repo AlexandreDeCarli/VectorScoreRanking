@@ -254,6 +254,22 @@ MAX_UPLOAD_SIZE_MB=10
 | `DB_DIALECT` | `mariadb` | MariaDB 11.7+ | Desenvolvimento local |
 | `DB_DIALECT` | `heatwave` | MySQL HeatWave | Produção (OCI) |
 
+### Tabela de Variáveis de Ambiente
+
+| Variável | Exemplo / Valor | Descrição |
+|----------|-----------------|-----------|
+| `PORT` | `3000` | Porta em que o servidor Elysia vai rodar. |
+| `DB_DIALECT` | `heatwave` ou `mariadb` | Controla o dialeto SQL e as funções de vetor utilizadas. |
+| `DB_HOST` | `10.0.0.159` | IP ou Host do banco de dados (pode ser o host do Heatwave na OCI). |
+| `DB_USER` | `meu_usuario` | Usuário do banco de dados. |
+| `DB_PASS` | `minha_senha` | Senha de acesso ao banco. |
+| `DB_NAME` | `meu_vector_db` | Nome do banco de dados. |
+| `GEMINI_API_KEY` | `AIzaSy...` | Sua API Key do Google Gemini para embeddings. |
+| `APP_USERNAME` | `admin` | Usuário de autenticação do painel. |
+| `APP_PASSWORD` | `senha_segura` | Senha de autenticação do painel. |
+| `JWT_SECRET` | `chave_aleatoria` | Hash aleatório para assinar os tokens JWT de sessão. |
+| `MAX_UPLOAD_SIZE_MB` | `10` | (Opcional) Limite máximo do tamanho de arquivo importado. |
+
 ---
 
 ## Setup & Execução Local
@@ -340,56 +356,6 @@ touch src/migrations/003_vector_index.heatwave.sql
 - Sufixo `.heatwave.sql` → roda **apenas** quando `DB_DIALECT=heatwave`
 - Sem sufixo (`.sql`) → roda em **ambos** os dialetos
 - Variantes de dialeto compartilham o mesmo nome canônico na tabela `_migrations`
-
----
-
-## Deploy em Produção (Coolify / OCI)
-
-A aplicação é totalmente preparada para rodar em produção no **Coolify**, aproveitando o `Dockerfile` multi-stage (que gera a SPA estática e serve o backend na mesma porta `3000`) e o executor de migrations automáticas.
-
-Você pode implantar este projeto usando um dos três cenários abaixo:
-
-### Cenário A: Apenas o App (Apontando para MySQL HeatWave de produção externo)
-*Ideal se o seu banco HeatWave já está hospedado e você só quer subir o app.*
-
-1. No Coolify, vá em **+ New Resource** > **Application** > **GitHub Repository**.
-2. Escolha o repositório `VectorScoreRanking` e a branch `main`.
-3. Defina o **Build Pack** como **Dockerfile** (o Coolify detectará automaticamente o arquivo na raiz).
-4. Configure as variáveis de ambiente na aba **Environment Variables** (veja tabela abaixo).
-5. Defina o domínio público com SSL automático (ex: `https://busca.potencial.tec.br`).
-6. Clique em **Deploy**. O script `migrate.ts` rodará automaticamente no startup contra o HeatWave remoto.
-
-### Cenário B: App + Banco local via Docker Compose (Staging / Homologação)
-*Ideal para rodar um MariaDB 11.8 integrado na mesma pilha no Coolify.*
-
-1. No Coolify, vá em **+ New Resource** > **Docker Compose**.
-2. Selecione o repositório ou cole o conteúdo do `docker-compose.yml`.
-3. Configure os domínios para mapear a porta `3000` do serviço `app` e as variáveis do banco.
-4. Clique em **Deploy**.
-
-### Cenário C: MariaDB do Coolify + App separado (Melhor organização)
-*Crie um recurso de banco de dados gerenciado nativo do Coolify e conecte seu App nele.*
-
-1. Vá em **+ New Resource** > **Database** > **MariaDB** (versão 11.8+). Anote as credenciais geradas.
-2. Crie a aplicação conforme o **Cenário A** e passe as credenciais do banco gerenciado nas variáveis de ambiente, definindo `DB_DIALECT=mariadb`.
-
----
-
-### Tabela de Variáveis de Ambiente
-
-| Variável | Exemplo / Valor | Descrição |
-|----------|-----------------|-----------|
-| `PORT` | `3000` | Porta em que o servidor Elysia vai rodar. |
-| `DB_DIALECT` | `heatwave` ou `mariadb` | Controla o dialeto SQL e as funções de vetor utilizadas. |
-| `DB_HOST` | `10.0.0.159` | IP ou Host do banco de dados (pode ser o host do Heatwave na OCI). |
-| `DB_USER` | `meu_usuario` | Usuário do banco de dados. |
-| `DB_PASS` | `minha_senha` | Senha de acesso ao banco. |
-| `DB_NAME` | `meu_vector_db` | Nome do banco de dados. |
-| `GEMINI_API_KEY` | `AIzaSy...` | Sua API Key do Google Gemini para embeddings. |
-| `APP_USERNAME` | `admin` | Usuário de autenticação do painel. |
-| `APP_PASSWORD` | `senha_segura` | Senha de autenticação do painel. |
-| `JWT_SECRET` | `chave_aleatoria` | Hash aleatório para assinar os tokens JWT de sessão. |
-| `MAX_UPLOAD_SIZE_MB` | `10` | (Opcional) Limite máximo do tamanho de arquivo importado. |
 
 ---
 
