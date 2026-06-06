@@ -17,6 +17,23 @@ import { join } from 'node:path';
 
 const MIGRATIONS_DIR = join(import.meta.dir, 'migrations');
 
+async function waitForDatabase(retries = 15, delayMs = 2000) {
+  for (let i = 1; i <= retries; i++) {
+    try {
+      console.log(`[migrate] Connecting to database (attempt ${i}/${retries})...`);
+      await pool.query('SELECT 1');
+      console.log('[migrate] Database connection established.');
+      return;
+    } catch (err: any) {
+      console.log(`[migrate] Database connection attempt ${i} failed: ${err.message}`);
+      if (i === retries) {
+        throw new Error(`Could not connect to database after ${retries} attempts.`);
+      }
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 async function ensureMigrationsTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS _migrations (
@@ -54,6 +71,7 @@ function canonicalName(filename: string): string {
 }
 
 export async function runMigrations() {
+  await waitForDatabase();
   await ensureMigrationsTable();
   const applied = await getAppliedMigrations();
 
