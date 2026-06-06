@@ -7,6 +7,18 @@ import { SQL_STRING_TO_VECTOR, SQL_VECTOR_TO_STRING, SQL_COSINE_SIMILARITY, getV
 const port = process.env.PORT || 3000;
 
 export const app = new Elysia()
+  .onRequest(({ request }) => {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/api') || url.pathname === '/') {
+      console.log(`[HTTP] 📥 ${request.method} ${url.pathname}`);
+    }
+  })
+  .onAfterResponse(({ request, set }) => {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/api') || url.pathname === '/') {
+      console.log(`[HTTP] 📤 ${request.method} ${url.pathname} - Status: ${set.status || 200}`);
+    }
+  })
   // Helper for auth sign
   .use(authPlugin)
   
@@ -83,6 +95,7 @@ export const app = new Elysia()
           
           return { id: result.insertId, titulo, success: true };
         } catch (err: any) {
+          console.error('[Error] POST /api/documents failed:', err);
           set.status = 500;
           return { error: `Erro ao gerar embedding ou salvar banco: ${err.message}` };
         }
@@ -126,6 +139,7 @@ export const app = new Elysia()
           
           return { id, titulo, success: true };
         } catch (err: any) {
+          console.error(`[Error] PUT /api/documents/${id} failed:`, err);
           set.status = 500;
           return { error: `Erro ao atualizar documento: ${err.message}` };
         }
@@ -172,6 +186,7 @@ export const app = new Elysia()
           
           return rows;
         } catch (err: any) {
+          console.error('[Error] POST /api/search failed:', err);
           set.status = 500;
           return { error: `Erro na busca por vetor: ${err.message}` };
         }
