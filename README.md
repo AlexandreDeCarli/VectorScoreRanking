@@ -72,10 +72,10 @@ Sem nenhuma das palavras "programar" ou "inteligência artificial" existirem nos
 | **Backend** | [Elysia.js](https://elysiajs.com) | Framework HTTP com tipagem end-to-end e JWT nativo |
 | **Frontend** | [React 18](https://react.dev) + [Vite](https://vite.dev) | SPA com tema escuro glassmórfico |
 | **Embeddings** | [Google Gemini API](https://ai.google.dev) | Modelo `gemini-embedding-2` com 768 dimensões |
-| **DB Local** | [MariaDB 11.8](https://mariadb.org) | Vetores nativos + índice HNSW (cosine) |
-| **DB Produção** | [MySQL HeatWave](https://www.oracle.com/mysql/heatwave/) | Vetores nativos na Oracle Cloud |
+| **DB Local** | [MariaDB 11.8](https://mariadb.org) | Vetores nativos + HNSW (Cosseno, Produto Escalar, Euclidiana) |
+| **DB Produção** | [MySQL HeatWave](https://www.oracle.com/mysql/heatwave/) | Vetores nativos na Oracle Cloud (COSINE, DOT, EUCLIDEAN) |
 | **Autenticação** | JWT (HS256) | Sessão stateless via `@elysiajs/jwt` |
-| **Testes** | Bun Test + Vitest + React Testing Library | 28 testes automatizados |
+| **Testes** | Bun Test + Vitest + React Testing Library | 32 testes automatizados |
 
 ---
 
@@ -94,9 +94,10 @@ Sem nenhuma das palavras "programar" ou "inteligência artificial" existirem nos
 
 ### 🔍 Busca Semântica Vetorial
 - Converte a query de busca em vetor de 768 dimensões
-- Calcula similaridade cosseno contra todos os documentos
-- Retorna top 10 ranqueados por proximidade semântica
-- Score visual com badge de porcentagem (destaque para >70%)
+- Suporta 3 métricas de distância: **Cosseno (`COSINE`)**, **Produto Escalar (`DOT`)** e **Euclidiana (`EUCLIDEAN`)**
+- Tradução dinâmica das funções vetoriais de acordo com o dialeto de banco de dados ativo (MariaDB vs MySQL HeatWave)
+- Retorna o ranking ordenado de forma correta (`DESC` para Cosseno/Dot, e `ASC` para Euclidiana - menor distância é melhor)
+- Score visual dinâmico com badge de pontuação customizado por métrica e destaque de relevância inteligente
 
 ### 🗄️ Compatibilidade Multi-Banco
 - **Desenvolvimento**: MariaDB 11.8 com `VEC_FromText()`, `VEC_DISTANCE_COSINE()`, índice HNSW
@@ -110,8 +111,8 @@ Sem nenhuma das palavras "programar" ou "inteligência artificial" existirem nos
 - Idempotentes: nunca re-aplicam uma migration já executada
 
 ### ✅ Suite de Testes
-- **16 testes backend** (Bun Test): DB, Gemini, Auth JWT, API REST completa
-- **12 testes frontend** (Vitest + Happy DOM + React Testing Library): Login, DocumentForm, Dashboard
+- **16 testes backend** (Bun Test): DB, Gemini, Auth JWT, API REST completa (incluindo as três métricas vetoriais)
+- **16 testes frontend** (Vitest + Happy DOM + React Testing Library): Login, DocumentForm, Dashboard (incluindo sidebar colapsável, visualizações compacta/detalhada e seletor de métricas)
 - Comando único: `bun run test:all`
 
 ---
@@ -188,25 +189,41 @@ CREATE TABLE IF NOT EXISTS vector_documentos (
 
 ### Queries de Busca Vetorial
 
-A mesma lógica, adaptada automaticamente pelo `sql-dialect.ts`:
+As queries de busca por semelhança são adaptadas dinamicamente de acordo com o dialeto de banco de dados ativo e a métrica selecionada através do helper `getVectorSearchSQL(metric)`:
 
-**MariaDB (dev)**:
-```sql
-SELECT id, titulo, conteudo,
-       (1 - VEC_DISTANCE_COSINE(embedding, VEC_FromText(?))) AS similarity
-FROM vector_documentos
-ORDER BY similarity DESC
-LIMIT 10;
-```
+#### MariaDB (dev)
+- **Cosseno (`COSINE`)**:
+  ```sql
+  SELECT id, titulo, conteudo, (1 - VEC_DISTANCE_COSINE(embedding, VEC_FromText(?))) AS similarity
+  FROM vector_documentos ORDER BY similarity DESC LIMIT 10;
+  ```
+- **Produto Escalar (`DOT`)**:
+  ```sql
+  SELECT id, titulo, conteudo, VEC_DISTANCE(embedding, VEC_FromText(?)) AS similarity
+  FROM vector_documentos ORDER BY similarity DESC LIMIT 10;
+  ```
+- **Euclidiana (`EUCLIDEAN`)**:
+  ```sql
+  SELECT id, titulo, conteudo, VEC_DISTANCE_EUCLIDEAN(embedding, VEC_FromText(?)) AS similarity
+  FROM vector_documentos ORDER BY similarity ASC LIMIT 10; -- Ordenamento ASC (menor distância é melhor)
+  ```
 
-**MySQL HeatWave (prod)**:
-```sql
-SELECT id, titulo, conteudo,
-       (1 - DISTANCE(embedding, STRING_TO_VECTOR(?), 'COSINE')) AS similarity
-FROM vector_documentos
-ORDER BY similarity DESC
-LIMIT 10;
-```
+#### MySQL HeatWave (prod)
+- **Cosseno (`COSINE`)**:
+  ```sql
+  SELECT id, titulo, conteudo, (1 - DISTANCE(embedding, STRING_TO_VECTOR(?), 'COSINE')) AS similarity
+  FROM vector_documentos ORDER BY similarity DESC LIMIT 10;
+  ```
+- **Produto Escalar (`DOT`)**:
+  ```sql
+  SELECT id, titulo, conteudo, DISTANCE(embedding, STRING_TO_VECTOR(?), 'DOT') AS similarity
+  FROM vector_documentos ORDER BY similarity DESC LIMIT 10;
+  ```
+- **Euclidiana (`EUCLIDEAN`)**:
+  ```sql
+  SELECT id, titulo, conteudo, DISTANCE(embedding, STRING_TO_VECTOR(?), 'EUCLIDEAN') AS similarity
+  FROM vector_documentos ORDER BY similarity ASC LIMIT 10; -- Ordenamento ASC (menor distância é melhor)
+  ```
 
 ---
 
@@ -290,7 +307,7 @@ bun run test:all
 # Apenas backend (16 testes)
 bun run test
 
-# Apenas frontend (12 testes)
+# Apenas frontend (16 testes)
 cd src/client && bun run test
 
 # Teste integrado de busca vetorial (requer GEMINI_API_KEY e DB rodando)
@@ -328,18 +345,51 @@ touch src/migrations/003_vector_index.heatwave.sql
 
 ## Deploy em Produção (Coolify / OCI)
 
-1. Configure o repositório Git no Coolify apontando para este repo
-2. Defina as variáveis de ambiente:
-   ```env
-   DB_HOST=10.0.0.159          # IP do MySQL HeatWave (subnet privada OCI)
-   DB_DIALECT=heatwave         # Ativa sintaxe MySQL HeatWave
-   GEMINI_API_KEY=...
-   APP_PASSWORD=...
-   JWT_SECRET=...
-   ```
-3. O Dockerfile multi-stage compila o frontend (Vite) e serve tudo em um único container Bun
-4. Porta exposta: `3000`
-5. As migrations rodam automaticamente no primeiro boot
+A aplicação é totalmente preparada para rodar em produção no **Coolify**, aproveitando o `Dockerfile` multi-stage (que gera a SPA estática e serve o backend na mesma porta `3000`) e o executor de migrations automáticas.
+
+Você pode implantar este projeto usando um dos três cenários abaixo:
+
+### Cenário A: Apenas o App (Apontando para MySQL HeatWave de produção externo)
+*Ideal se o seu banco HeatWave já está hospedado e você só quer subir o app.*
+
+1. No Coolify, vá em **+ New Resource** > **Application** > **GitHub Repository**.
+2. Escolha o repositório `VectorScoreRanking` e a branch `main`.
+3. Defina o **Build Pack** como **Dockerfile** (o Coolify detectará automaticamente o arquivo na raiz).
+4. Configure as variáveis de ambiente na aba **Environment Variables** (veja tabela abaixo).
+5. Defina o domínio público com SSL automático (ex: `https://busca.potencial.tec.br`).
+6. Clique em **Deploy**. O script `migrate.ts` rodará automaticamente no startup contra o HeatWave remoto.
+
+### Cenário B: App + Banco local via Docker Compose (Staging / Homologação)
+*Ideal para rodar um MariaDB 11.8 integrado na mesma pilha no Coolify.*
+
+1. No Coolify, vá em **+ New Resource** > **Docker Compose**.
+2. Selecione o repositório ou cole o conteúdo do `docker-compose.yml`.
+3. Configure os domínios para mapear a porta `3000` do serviço `app` e as variáveis do banco.
+4. Clique em **Deploy**.
+
+### Cenário C: MariaDB do Coolify + App separado (Melhor organização)
+*Crie um recurso de banco de dados gerenciado nativo do Coolify e conecte seu App nele.*
+
+1. Vá em **+ New Resource** > **Database** > **MariaDB** (versão 11.8+). Anote as credenciais geradas.
+2. Crie a aplicação conforme o **Cenário A** e passe as credenciais do banco gerenciado nas variáveis de ambiente, definindo `DB_DIALECT=mariadb`.
+
+---
+
+### Tabela de Variáveis de Ambiente
+
+| Variável | Exemplo / Valor | Descrição |
+|----------|-----------------|-----------|
+| `PORT` | `3000` | Porta em que o servidor Elysia vai rodar. |
+| `DB_DIALECT` | `heatwave` ou `mariadb` | Controla o dialeto SQL e as funções de vetor utilizadas. |
+| `DB_HOST` | `10.0.0.159` | IP ou Host do banco de dados (pode ser o host do Heatwave na OCI). |
+| `DB_USER` | `meu_usuario` | Usuário do banco de dados. |
+| `DB_PASS` | `minha_senha` | Senha de acesso ao banco. |
+| `DB_NAME` | `meu_vector_db` | Nome do banco de dados. |
+| `GEMINI_API_KEY` | `AIzaSy...` | Sua API Key do Google Gemini para embeddings. |
+| `APP_USERNAME` | `admin` | Usuário de autenticação do painel. |
+| `APP_PASSWORD` | `senha_segura` | Senha de autenticação do painel. |
+| `JWT_SECRET` | `chave_aleatoria` | Hash aleatório para assinar os tokens JWT de sessão. |
+| `MAX_UPLOAD_SIZE_MB` | `10` | (Opcional) Limite máximo do tamanho de arquivo importado. |
 
 ---
 
@@ -371,11 +421,17 @@ curl -s http://localhost:3000/api/documents \
   -H 'Content-Type: application/json' \
   -d '{"titulo":"Meu Documento","conteudo":"Texto do documento aqui..."}'
 
-# Busca semântica
+# Busca semântica (Cosseno - padrão)
 curl -s http://localhost:3000/api/search \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"query":"inteligência artificial e aprendizado de máquina"}'
+  -d '{"query":"inteligência artificial", "metric":"COSINE"}'
+
+# Busca semântica (Euclidiana)
+curl -s http://localhost:3000/api/search \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"veículos elétricos", "metric":"EUCLIDEAN"}'
 ```
 
 ---
