@@ -34,6 +34,40 @@ async function waitForDatabase(retries = 15, delayMs = 2000) {
   }
 }
 
+function cleanSqlComments(sql: string): string {
+  return sql
+    .split('\n')
+    .map(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('--') || trimmed.startsWith('#')) {
+        return '';
+      }
+      return line;
+    })
+    .join('\n')
+    .trim();
+}
+
+async function ensureTablesConsistency() {
+  try {
+    await pool.query('SELECT 1 FROM vector_documentos LIMIT 1');
+  } catch (err: any) {
+    const isNoSuchTable = 
+      err.code === 'ER_NO_SUCH_TABLE' || 
+      err.message?.toLowerCase().includes("doesn't exist") || 
+      err.message?.toLowerCase().includes("does not exist");
+      
+    if (isNoSuchTable) {
+      console.log('[migrate] Table vector_documentos does not exist. Resetting migration tracking to force creation.');
+      try {
+        await pool.query('DELETE FROM _migrations');
+      } catch {
+        // Table _migrations might not exist yet, which is fine
+      }
+    }
+  }
+}
+
 async function ensureMigrationsTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS _migrations (
@@ -73,6 +107,7 @@ function canonicalName(filename: string): string {
 export async function runMigrations() {
   await waitForDatabase();
   await ensureMigrationsTable();
+  await ensureTablesConsistency();
   const applied = await getAppliedMigrations();
 
   let files: string[];
@@ -107,8 +142,8 @@ export async function runMigrations() {
     // Split by semicolons to support multi-statement migrations
     const statements = sql
       .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith('--'));
+      .map(s => cleanSqlComments(s))
+      .filter(s => s.length > 0);
 
     for (const stmt of statements) {
       await pool.query(stmt);
