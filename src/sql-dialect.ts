@@ -61,7 +61,7 @@ export function getVectorSearchSQL(metric: MetricType = 'COSINE') {
       case 'DOT':
         return {
           select: 'VEC_DISTANCE(embedding, VEC_FromText(?))',
-          order: 'similarity DESC'
+          order: 'similarity ASC'
         };
     }
   } else {
