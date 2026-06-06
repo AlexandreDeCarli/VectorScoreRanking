@@ -73,6 +73,16 @@ export const api = {
     return data;
   },
 
+  async deleteAllDocuments() {
+    const res = await fetch('/api/documents', {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao excluir todos os documentos');
+    return data;
+  },
+
   async search(query: string, metric: 'COSINE' | 'DOT' | 'EUCLIDEAN' = 'COSINE') {
     const res = await fetch('/api/search', {
       method: 'POST',

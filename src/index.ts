@@ -208,6 +208,12 @@ export const app = new Elysia()
         })
       })
       
+      // Delete All Documents
+      .delete('/documents', async () => {
+        await pool.query('DELETE FROM vector_documentos');
+        return { success: true };
+      })
+
       // Delete Document
       .delete('/documents/:id', async ({ params, set }) => {
         const id = parseInt(params.id);

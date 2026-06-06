@@ -394,4 +394,29 @@ describe('Elysia REST API Integration Tests', () => {
       expect(res2.status).toBe(422);
     });
   });
+
+  it('should delete all documents via DELETE /api/documents', async () => {
+    // Insert a dummy document
+    const embeddingStr = '[' + new Array(768).fill(0.1).join(',') + ']';
+    const vecFunc = process.env.DB_DIALECT === 'heatwave' ? 'STRING_TO_VECTOR(?)' : 'VEC_FromText(?)';
+    await pool.query(`INSERT INTO vector_documentos (titulo, conteudo, embedding) VALUES (?, ?, ${vecFunc})`, 
+      ['[TEST-API] Temp Delete All Doc', 'Temporary content', embeddingStr]
+    );
+
+    const req = new Request('http://localhost/api/documents', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const res = await app.handle(req);
+    expect(res.status).toBe(200);
+    const data: any = await res.json();
+    expect(data.success).toBe(true);
+
+    // Verify table is empty
+    const [rows]: any = await pool.query('SELECT COUNT(*) as count FROM vector_documentos');
+    expect(rows[0].count).toBe(0);
+  });
 });

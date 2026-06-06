@@ -99,6 +99,17 @@ Sem nenhuma das palavras "programar" ou "inteligência artificial" existirem nos
 - Retorna o ranking ordenado de forma correta (`DESC` para Cosseno/Dot, e `ASC` para Euclidiana - menor distância é melhor)
 - Score visual dinâmico com badge de pontuação customizado por métrica
 
+### 📥 Importação em Lote (Batch Import)
+- Upload de arquivos JSON contendo listas de documentos estruturados (`nome` e conteúdo base64).
+- Processamento sequencial com logs de terminal de desenvolvimento em tempo real na tela.
+- Prevenção inteligente de duplicados: se o arquivo já existir com o mesmo conteúdo, a API pula a gravação e a chamada ao Gemini. Se o conteúdo for diferente, atualiza o registro e gera o novo embedding.
+- Script utilitário local para converter dumps SQL no formato de importação JSON do sistema, com mapeamento e prevenção de colisões de nomes através do prefixamento do ID (`#ID - Nome`).
+
+### 🛠️ UX Avançado no Terminal
+- **Visualizador Expansivo ("Ver mais")**: Cards de resultado de busca que excedem 3 linhas de texto exibem um botão sutil de expansão que abre um modal com o conteúdo completo formatado em bloco monospaced.
+- **Excluir Todos (Delete All)**: Botão de destruição em lote na barra lateral para limpar a tabela de vetores do banco de dados, protegido por modal de confirmação.
+- **Acessibilidade Completa**: Modais e caixas de diálogo suportam fechamento por tecla `Escape` e cliques na área externa (backdrop click).
+
 ### 🗄️ Compatibilidade Multi-Banco
 - **Desenvolvimento**: MariaDB 11.8 com `VEC_FromText()`, `VEC_DISTANCE_COSINE()`, índice HNSW
 - **Produção**: MySQL HeatWave com `STRING_TO_VECTOR()`, `DISTANCE(..., 'COSINE')`
@@ -111,8 +122,8 @@ Sem nenhuma das palavras "programar" ou "inteligência artificial" existirem nos
 - Idempotentes: nunca re-aplicam uma migration já executada
 
 ### ✅ Suite de Testes
-- **16 testes backend** (Bun Test): DB, Gemini, Auth JWT, API REST completa
-- **16 testes frontend** (Vitest + Happy DOM + React Testing Library): Login, DocumentForm, Dashboard
+- **21 testes backend** (Bun Test): DB, Gemini, Auth JWT, API REST completa (incluindo testes de importação e exclusão total)
+- **23 testes frontend** (Vitest + Happy DOM + React Testing Library): Login, DocumentForm, Dashboard (incluindo testes de colapsabilidade lateral, truncamento e exclusão total)
 - Comando único: `bun run test:all`
 
 ---
@@ -371,6 +382,8 @@ Todas as rotas (exceto login) requerem header `Authorization: Bearer <token>`.
 | `POST` | `/api/documents` | Criar documento (gera embedding) |
 | `PUT` | `/api/documents/:id` | Atualizar documento (re-gera embedding se conteúdo mudar) |
 | `DELETE` | `/api/documents/:id` | Excluir documento |
+| `DELETE` | `/api/documents` | Excluir todos os documentos (limpar base de dados) |
+| `POST` | `/api/documents/import` | Importar documento individual em lote (payload base64) |
 | `POST` | `/api/search` | Busca semântica vetorial (top 10 por similaridade) |
 
 ### Exemplos com cURL

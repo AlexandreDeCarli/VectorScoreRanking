@@ -20,6 +20,72 @@ interface SearchResult {
   similarity: number;
 }
 
+interface ResultItemProps {
+  res: SearchResult;
+  metric: string;
+  viewMode: 'compact' | 'detailed';
+  onViewDetails: (doc: SearchResult) => void;
+  formatScore: (score: number) => string;
+}
+
+const ResultItem: React.FC<ResultItemProps> = ({ res, metric, viewMode, onViewDetails, formatScore }) => {
+  const bodyRef = React.useRef<HTMLDivElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const checkTruncation = () => {
+      const el = bodyRef.current;
+      if (el) {
+        setIsTruncated(el.scrollHeight > el.clientHeight);
+      }
+    };
+
+    checkTruncation();
+    window.addEventListener('resize', checkTruncation);
+    
+    // Check multiple times as rendering cycles settle
+    const timeoutId1 = setTimeout(checkTruncation, 50);
+    const timeoutId2 = setTimeout(checkTruncation, 250);
+
+    return () => {
+      window.removeEventListener('resize', checkTruncation);
+      clearTimeout(timeoutId1);
+      clearTimeout(timeoutId2);
+    };
+  }, [res.conteudo, viewMode]);
+
+  const isHigh = metric === 'COSINE'
+    ? res.similarity >= 0.7
+    : metric === 'EUCLIDEAN'
+      ? res.similarity <= 0.4
+      : res.similarity >= 0.7;
+
+  return (
+    <div className="result-item">
+      <div className="result-header">
+        <h4>{res.titulo}</h4>
+        <span className={`score-badge ${isHigh ? 'score-high' : ''}`}>
+          {formatScore(res.similarity)}
+        </span>
+      </div>
+      <div className="result-body-wrapper">
+        <div ref={bodyRef} className="result-body">
+          {res.conteudo}
+        </div>
+        {isTruncated && (
+          <button
+            type="button"
+            className="btn-show-more"
+            onClick={() => onViewDetails(res)}
+          >
+            Ver mais
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -35,6 +101,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [activeDocId, setActiveDocId] = useState<number | null>(null);
+  const [activeDetailDoc, setActiveDetailDoc] = useState<SearchResult | null>(null);
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
+
+  // Close modals on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveDetailDoc(null);
+        setIsDeleteAllOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     loadDocuments();
@@ -63,6 +143,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       setSearchResults(prev => prev.filter(res => res.id !== id));
     } catch (err: any) {
       setError(err.message || 'Erro ao excluir documento');
+    }
+  };
+
+  const handleDeleteAllConfirm = async () => {
+    setIsDeleteAllOpen(false);
+    setError(null);
+    try {
+      await api.deleteAllDocuments();
+      loadDocuments();
+      setSearchResults([]); // Clear search results as well
+    } catch (err: any) {
+      setError(err.message || 'Erro ao excluir todos os documentos');
     }
   };
 
@@ -126,6 +218,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           <div className="sidebar-header">
             <h2>Documentos Salvos ({documents.length})</h2>
             <div className="doc-actions">
+              {documents.length > 0 && (
+                <button className="btn btn-danger btn-icon" onClick={() => setIsDeleteAllOpen(true)} title="Excluir Todos os Documentos">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              )}
               <button className="btn btn-secondary btn-icon" onClick={() => setIsBatchOpen(true)} title="Importar Lote (JSON)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -306,24 +406,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                         </button>
                       </div>
                     </div>
-                    {searchResults.map((res) => {
-                      const isHigh = metric === 'COSINE'
-                        ? res.similarity >= 0.7
-                        : metric === 'EUCLIDEAN'
-                          ? res.similarity <= 0.4
-                          : res.similarity >= 0.7;
-                      return (
-                        <div key={res.id} className="result-item">
-                          <div className="result-header">
-                            <h4>{res.titulo}</h4>
-                            <span className={`score-badge ${isHigh ? 'score-high' : ''}`}>
-                              {formatScore(res.similarity)}
-                            </span>
-                          </div>
-                          <div className="result-body">{res.conteudo}</div>
-                        </div>
-                      );
-                    })}
+                    {searchResults.map((res) => (
+                      <ResultItem
+                        key={res.id}
+                        res={res}
+                        metric={metric}
+                        viewMode={viewMode}
+                        onViewDetails={setActiveDetailDoc}
+                        formatScore={formatScore}
+                      />
+                    ))}
                   </div>
                 )}
 
@@ -353,6 +445,58 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           onClose={() => setIsBatchOpen(false)}
           onSave={handleSaveSuccess}
         />
+      )}
+
+      {/* Document Detail/Preview Modal */}
+      {activeDetailDoc && (
+        <div className="modal-overlay" onClick={() => setActiveDetailDoc(null)}>
+          <div className="glass-card modal-content" style={{ maxWidth: '700px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{activeDetailDoc.titulo}</h2>
+              <button className="modal-close" onClick={() => setActiveDetailDoc(null)}>&times;</button>
+            </div>
+            <div className="doc-preview-body">
+              {activeDetailDoc.conteudo}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setActiveDetailDoc(null)}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All Confirmation Modal */}
+      {isDeleteAllOpen && (
+        <div className="modal-overlay" onClick={() => setIsDeleteAllOpen(false)}>
+          <div className="glass-card modal-content" style={{ maxWidth: '450px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 style={{ color: 'var(--danger)' }}>Confirmar Exclusão Total</h2>
+              <button className="modal-close" onClick={() => setIsDeleteAllOpen(false)}>&times;</button>
+            </div>
+            <div style={{ margin: '15px 0', fontSize: '0.95rem', lineHeight: '1.5', color: 'var(--text-primary)' }}>
+              <p style={{ marginBottom: '10px' }}>
+                Você está prestes a excluir **todos os {documents.length} documentos** cadastrados no sistema.
+              </p>
+              <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                ⚠️ Esta ação limpará completamente a base de dados de vetores e é irreversível. Deseja continuar?
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setIsDeleteAllOpen(false)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleDeleteAllConfirm}
+              >
+                Sim, Excluir Tudo
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

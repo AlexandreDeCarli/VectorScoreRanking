@@ -9,6 +9,7 @@ vi.mock('../utils/api', () => ({
   api: {
     listDocuments: vi.fn(),
     deleteDocument: vi.fn(),
+    deleteAllDocuments: vi.fn(),
     search: vi.fn(),
   },
 }));
@@ -203,5 +204,98 @@ describe('Dashboard Component', () => {
 
     expect(container.querySelector('.results-list-compact')).not.toBeInTheDocument();
     expect(container.querySelector('.results-list-detailed')).toBeInTheDocument();
+  });
+
+  it('should render "Ver mais" button when content is truncated and open detail modal on click', async () => {
+    (api.listDocuments as any).mockResolvedValue([]);
+    (api.search as any).mockResolvedValue([
+      { id: 1, titulo: 'Documento Muito Longo', conteudo: 'Linha 1\nLinha 2\nLinha 3\nLinha 4\nLinha 5', similarity: 0.9 }
+    ]);
+
+    // Mock scrollHeight and clientHeight to simulate truncation (scrollHeight > clientHeight)
+    const originalScrollHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight');
+    const originalClientHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight');
+
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get: () => 100 });
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, get: () => 50 });
+
+    const { container } = render(<Dashboard onLogout={() => {}} />);
+
+    // Perform search
+    const searchInput = screen.getByPlaceholderText(/Pesquise conceitos/i);
+    const searchBtn = screen.getByRole('button', { name: /Buscar/i });
+    fireEvent.change(searchInput, { target: { value: 'longo' } });
+    fireEvent.click(searchBtn);
+
+    // Verify "Ver mais" is displayed
+    const showMoreBtn = await screen.findByRole('button', { name: /Ver mais/i });
+    expect(showMoreBtn).toBeInTheDocument();
+
+    // Click "Ver mais"
+    fireEvent.click(showMoreBtn);
+
+    // Verify preview modal is opened and displays complete content
+    expect(screen.getByText('Documento Muito Longo', { selector: 'h2' })).toBeInTheDocument();
+    const modalBody = container.querySelector('.doc-preview-body');
+    expect(modalBody).toBeInTheDocument();
+    expect(modalBody?.textContent).toContain('Linha 1');
+    expect(modalBody?.textContent).toContain('Linha 5');
+
+    // Close modal
+    const closeBtn = screen.getByRole('button', { name: /Fechar/i });
+    fireEvent.click(closeBtn);
+
+    // Verify modal is closed
+    expect(screen.queryByText('Documento Muito Longo', { selector: 'h2' })).not.toBeInTheDocument();
+
+    // Restore original property descriptors
+    if (originalScrollHeight) {
+      Object.defineProperty(HTMLElement.prototype, 'scrollHeight', originalScrollHeight);
+    } else {
+      delete (HTMLElement.prototype as any).scrollHeight;
+    }
+
+    if (originalClientHeight) {
+      Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight);
+    } else {
+      delete (HTMLElement.prototype as any).clientHeight;
+    }
+  });
+
+  it('should render "Excluir Todos" button, open confirmation modal, and call api.deleteAllDocuments on confirm', async () => {
+    (api.listDocuments as any).mockResolvedValue([
+      { id: 1, titulo: 'Doc 1', created_at: '2026-06-05T12:00:00Z' }
+    ]);
+    (api.deleteAllDocuments as any).mockResolvedValue({ success: true });
+
+    render(<Dashboard onLogout={() => {}} />);
+
+    // Wait for document to load and button to be visible
+    const deleteAllBtn = await screen.findByTitle('Excluir Todos os Documentos');
+    expect(deleteAllBtn).toBeInTheDocument();
+
+    // Click the delete all button
+    fireEvent.click(deleteAllBtn);
+
+    // Verify confirmation modal is displayed
+    expect(screen.getByText('Confirmar Exclusão Total')).toBeInTheDocument();
+
+    // Click cancel first to test close behavior
+    const cancelBtn = screen.getByRole('button', { name: /Cancelar/i });
+    fireEvent.click(cancelBtn);
+    expect(screen.queryByText('Confirmar Exclusão Total')).not.toBeInTheDocument();
+
+    // Open again
+    fireEvent.click(deleteAllBtn);
+
+    // Click confirm deletion
+    const confirmBtn = screen.getByRole('button', { name: /Sim, Excluir Tudo/i });
+    fireEvent.click(confirmBtn);
+
+    // Check mock API call
+    expect(api.deleteAllDocuments).toHaveBeenCalled();
+    
+    // Verify modal is closed
+    expect(screen.queryByText('Confirmar Exclusão Total')).not.toBeInTheDocument();
   });
 });
